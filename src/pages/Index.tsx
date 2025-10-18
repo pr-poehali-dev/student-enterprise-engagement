@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Slider } from '@/components/ui/slider';
 
 type UserRole = 'student' | 'company' | null;
 type TaskStatus = 'public' | 'private';
@@ -19,6 +20,7 @@ interface Task {
   id: string;
   title: string;
   company: string;
+  companyId: string;
   companyLogo: string;
   description: string;
   points: number;
@@ -30,13 +32,27 @@ interface Task {
 interface Solution {
   id: string;
   studentName: string;
+  studentId: string;
   studentAvatar: string;
   taskId: string;
   taskTitle: string;
   description: string;
   submittedAt: string;
-  score: number;
+  score: number | null;
+  maxScore: number;
   files: string[];
+}
+
+interface Webinar {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  duration: string;
+  speaker: string;
+  registered: number;
+  maxParticipants: number;
+  status: 'upcoming' | 'live' | 'completed';
 }
 
 interface Message {
@@ -64,16 +80,30 @@ interface Community {
   description: string;
   members: number;
   activeTasks: number;
+  industry: string;
+  founded: string;
+}
+
+interface RatingUser {
+  id: string;
+  name: string;
+  avatar: string;
+  points: number;
+  tasksCompleted: number;
+  rank: number;
 }
 
 const Index = () => {
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showAuthDialog, setShowAuthDialog] = useState(true);
-  const [currentView, setCurrentView] = useState<'feed' | 'profile' | 'communities' | 'solutions' | 'messages'>('feed');
+  const [currentView, setCurrentView] = useState<'feed' | 'profile' | 'communities' | 'solutions' | 'messages' | 'community'>('feed');
+  const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null);
   const [selectedSolution, setSelectedSolution] = useState<Solution | null>(null);
   const [showChatDialog, setShowChatDialog] = useState(false);
+  const [showScoreDialog, setShowScoreDialog] = useState(false);
   const [selectedChatUser, setSelectedChatUser] = useState<string | null>(null);
+  const [scoreValue, setScoreValue] = useState<number[]>([0]);
 
   const handleRoleSelect = (role: UserRole) => {
     setUserRole(role);
@@ -81,11 +111,27 @@ const Index = () => {
     setShowAuthDialog(false);
   };
 
+  const openCommunityPage = (community: Community) => {
+    setSelectedCommunity(community);
+    setCurrentView('community');
+  };
+
+  const openScoreDialog = (solution: Solution) => {
+    setSelectedSolution(solution);
+    setScoreValue([solution.score || 0]);
+    setShowScoreDialog(true);
+  };
+
+  const saveScore = () => {
+    setShowScoreDialog(false);
+  };
+
   const tasks: Task[] = [
     {
       id: '1',
       title: 'Разработка мобильного приложения для логистики',
       company: 'ТехноЛогистик',
+      companyId: '1',
       companyLogo: '🚚',
       description: 'Создайте прототип мобильного приложения для отслеживания грузов в реальном времени',
       points: 500,
@@ -97,6 +143,7 @@ const Index = () => {
       id: '2',
       title: 'Анализ данных продаж',
       company: 'РетейлПро',
+      companyId: '2',
       companyLogo: '📊',
       description: 'Проанализируйте данные продаж за последний квартал и предложите рекомендации',
       points: 300,
@@ -108,6 +155,7 @@ const Index = () => {
       id: '3',
       title: 'Дизайн корпоративного сайта',
       company: 'Креатив Студия',
+      companyId: '3',
       companyLogo: '🎨',
       description: 'Разработайте современный дизайн главной страницы корпоративного сайта',
       points: 400,
@@ -121,36 +169,86 @@ const Index = () => {
     {
       id: '1',
       studentName: 'Анна Петрова',
+      studentId: '1',
       studentAvatar: '',
       taskId: '1',
       taskTitle: 'Разработка мобильного приложения для логистики',
       description: 'Разработал прототип в Figma с основными экранами: отслеживание груза, уведомления, история заказов. Добавил интерактивную карту и пуш-уведомления.',
       submittedAt: '2 часа назад',
       score: 485,
+      maxScore: 500,
       files: ['prototype.fig', 'presentation.pdf']
     },
     {
       id: '2',
       studentName: 'Иван Смирнов',
+      studentId: '2',
       studentAvatar: '',
       taskId: '1',
       taskTitle: 'Разработка мобильного приложения для логистики',
       description: 'React Native приложение с интеграцией Google Maps API. Реализован функционал отслеживания в реальном времени через WebSocket.',
       submittedAt: '5 часов назад',
-      score: 495,
+      score: null,
+      maxScore: 500,
       files: ['app.zip', 'demo-video.mp4']
     },
     {
       id: '3',
       studentName: 'Мария Козлова',
+      studentId: '3',
       studentAvatar: '',
       taskId: '2',
       taskTitle: 'Анализ данных продаж',
       description: 'Провела анализ с использованием Python и Pandas. Выявила тренды продаж, сезонность и предложила 5 рекомендаций для роста выручки.',
       submittedAt: '1 день назад',
       score: 290,
+      maxScore: 300,
       files: ['analysis.ipynb', 'report.pdf']
     }
+  ];
+
+  const webinars: Webinar[] = [
+    {
+      id: '1',
+      title: 'Введение в логистические системы',
+      description: 'Узнайте основы современных логистических технологий и автоматизации процессов доставки',
+      date: '20 октября 2025, 18:00',
+      duration: '1.5 часа',
+      speaker: 'Алексей Иванов, CTO ТехноЛогистик',
+      registered: 45,
+      maxParticipants: 100,
+      status: 'upcoming'
+    },
+    {
+      id: '2',
+      title: 'Мастер-класс по анализу данных',
+      description: 'Практический воркшоп по работе с большими данными в ритейле',
+      date: 'Сегодня, 15:00',
+      duration: '2 часа',
+      speaker: 'Мария Смирнова, Data Scientist',
+      registered: 87,
+      maxParticipants: 100,
+      status: 'live'
+    },
+    {
+      id: '3',
+      title: 'Карьера в IT-логистике',
+      description: 'Обсудим навыки и компетенции для успешной карьеры в IT-сфере логистики',
+      date: '15 октября 2025',
+      duration: '1 час',
+      speaker: 'Команда HR',
+      registered: 120,
+      maxParticipants: 150,
+      status: 'completed'
+    }
+  ];
+
+  const ratingUsers: RatingUser[] = [
+    { id: '1', name: 'Анна Петрова', avatar: '', points: 1850, tasksCompleted: 12, rank: 1 },
+    { id: '2', name: 'Иван Смирнов', avatar: '', points: 1620, tasksCompleted: 10, rank: 2 },
+    { id: '3', name: 'Мария Козлова', avatar: '', points: 1480, tasksCompleted: 9, rank: 3 },
+    { id: '4', name: 'Петр Сидоров', avatar: '', points: 1350, tasksCompleted: 8, rank: 4 },
+    { id: '5', name: 'Елена Новикова', avatar: '', points: 1220, tasksCompleted: 7, rank: 5 }
   ];
 
   const chatMessages: Message[] = [
@@ -205,7 +303,9 @@ const Index = () => {
       logo: '🚚',
       description: 'Инновационные решения в сфере логистики и доставки',
       members: 156,
-      activeTasks: 8
+      activeTasks: 8,
+      industry: 'Логистика и IT',
+      founded: '2018'
     },
     {
       id: '2',
@@ -213,7 +313,9 @@ const Index = () => {
       logo: '📊',
       description: 'Современные технологии для розничной торговли',
       members: 203,
-      activeTasks: 12
+      activeTasks: 12,
+      industry: 'Розничная торговля',
+      founded: '2015'
     },
     {
       id: '3',
@@ -221,7 +323,9 @@ const Index = () => {
       logo: '🎨',
       description: 'Дизайн и креативные решения для бизнеса',
       members: 89,
-      activeTasks: 5
+      activeTasks: 5,
+      industry: 'Дизайн и креатив',
+      founded: '2020'
     }
   ];
 
@@ -273,6 +377,24 @@ const Index = () => {
       case 'medium': return 'Средне';
       case 'hard': return 'Сложно';
       default: return difficulty;
+    }
+  };
+
+  const getWebinarStatusColor = (status: string) => {
+    switch (status) {
+      case 'live': return 'bg-red-100 text-red-800';
+      case 'upcoming': return 'bg-blue-100 text-blue-800';
+      case 'completed': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getWebinarStatusLabel = (status: string) => {
+    switch (status) {
+      case 'live': return '🔴 Идёт сейчас';
+      case 'upcoming': return '📅 Скоро';
+      case 'completed': return '✓ Завершён';
+      default: return status;
     }
   };
 
@@ -333,7 +455,10 @@ const Index = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+              <div 
+                className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center cursor-pointer"
+                onClick={() => setCurrentView('feed')}
+              >
                 <Icon name="GraduationCap" className="text-white" size={20} />
               </div>
               <span className="text-xl font-semibold text-primary">EduConnect</span>
@@ -397,6 +522,225 @@ const Index = () => {
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {currentView === 'community' && selectedCommunity && (
+          <div className="animate-fade-in">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setCurrentView('communities')}
+              className="mb-6 gap-2"
+            >
+              <Icon name="ArrowLeft" size={16} />
+              Назад к сообществам
+            </Button>
+
+            <div className="mb-8">
+              <div className="flex items-start gap-6 mb-6">
+                <div className="w-24 h-24 bg-secondary/10 rounded-2xl flex items-center justify-center text-5xl">
+                  {selectedCommunity.logo}
+                </div>
+                <div className="flex-1">
+                  <h1 className="text-4xl font-bold text-gray-900 mb-2">{selectedCommunity.name}</h1>
+                  <p className="text-gray-600 text-lg mb-3">{selectedCommunity.description}</p>
+                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <Icon name="Users" size={16} />
+                      {selectedCommunity.members} участников
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Icon name="Briefcase" size={16} />
+                      {selectedCommunity.industry}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Icon name="Calendar" size={16} />
+                      С {selectedCommunity.founded} года
+                    </div>
+                  </div>
+                </div>
+                <Button size="lg" className="gap-2">
+                  <Icon name="UserPlus" size={18} />
+                  Вступить
+                </Button>
+              </div>
+            </div>
+
+            <Tabs defaultValue="tasks" className="w-full">
+              <TabsList className="grid w-full grid-cols-3 mb-6">
+                <TabsTrigger value="tasks">Задания</TabsTrigger>
+                <TabsTrigger value="rating">Рейтинг</TabsTrigger>
+                <TabsTrigger value="webinars">Вебинары</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="tasks">
+                <div className="grid gap-6 lg:grid-cols-2">
+                  {tasks
+                    .filter(task => task.companyId === selectedCommunity.id)
+                    .map((task) => (
+                    <Card key={task.id} className="hover:shadow-lg transition-shadow">
+                      <CardHeader>
+                        <CardTitle className="text-lg">{task.title}</CardTitle>
+                        <div className="flex items-center gap-2 flex-wrap mt-2">
+                          <Badge className={getDifficultyColor(task.difficulty)}>
+                            {getDifficultyLabel(task.difficulty)}
+                          </Badge>
+                          <Badge variant={task.status === 'public' ? 'default' : 'secondary'}>
+                            {task.status === 'public' ? '👁️ Публичное' : '🔒 Приватное'}
+                          </Badge>
+                          <Badge variant="outline" className="gap-1">
+                            <Icon name="Award" size={14} />
+                            {task.points} баллов
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-gray-700 mb-4">{task.description}</p>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center text-sm text-gray-500 gap-1">
+                            <Icon name="Users" size={16} />
+                            {task.participants} участников
+                          </div>
+                          {userRole === 'student' && (
+                            <Button size="sm" className="gap-2">
+                              Принять участие
+                              <Icon name="ArrowRight" size={16} />
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="rating">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Icon name="Trophy" size={24} />
+                      Топ участников сообщества
+                    </CardTitle>
+                    <CardDescription>
+                      Лучшие студенты по количеству баллов
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {ratingUsers.map((user) => (
+                        <div 
+                          key={user.id}
+                          className={`flex items-center gap-4 p-4 rounded-lg transition-all ${
+                            user.rank <= 3 
+                              ? 'bg-gradient-to-r from-secondary/10 to-transparent border-2 border-secondary/20' 
+                              : 'bg-gray-50 border border-gray-200'
+                          }`}
+                        >
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg ${
+                            user.rank === 1 ? 'bg-yellow-400 text-yellow-900' :
+                            user.rank === 2 ? 'bg-gray-300 text-gray-700' :
+                            user.rank === 3 ? 'bg-orange-400 text-orange-900' :
+                            'bg-gray-200 text-gray-600'
+                          }`}>
+                            {user.rank}
+                          </div>
+                          <Avatar className="w-12 h-12">
+                            <AvatarFallback className="bg-secondary text-white">
+                              {user.name.split(' ').map(n => n[0]).join('')}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <div className="font-semibold text-lg">{user.name}</div>
+                            <div className="text-sm text-gray-500">
+                              {user.tasksCompleted} заданий выполнено
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-primary">{user.points}</div>
+                            <div className="text-xs text-gray-500">баллов</div>
+                          </div>
+                          {userRole === 'company' && (
+                            <Button variant="outline" size="sm" className="gap-2">
+                              <Icon name="MessageCircle" size={16} />
+                              Написать
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="webinars">
+                <div className="grid gap-6">
+                  {webinars.map((webinar) => (
+                    <Card key={webinar.id} className="hover:shadow-lg transition-shadow">
+                      <CardHeader>
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <CardTitle className="text-xl">{webinar.title}</CardTitle>
+                              <Badge className={getWebinarStatusColor(webinar.status)}>
+                                {getWebinarStatusLabel(webinar.status)}
+                              </Badge>
+                            </div>
+                            <CardDescription className="text-base">{webinar.description}</CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid sm:grid-cols-2 gap-4 text-sm">
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Icon name="Calendar" size={16} />
+                            {webinar.date}
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Icon name="Clock" size={16} />
+                            {webinar.duration}
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Icon name="User" size={16} />
+                            {webinar.speaker}
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Icon name="Users" size={16} />
+                            {webinar.registered} / {webinar.maxParticipants} участников
+                          </div>
+                        </div>
+                        
+                        <Progress 
+                          value={(webinar.registered / webinar.maxParticipants) * 100} 
+                          className="h-2"
+                        />
+
+                        <div className="flex gap-2">
+                          {webinar.status === 'upcoming' && (
+                            <Button className="flex-1 gap-2">
+                              <Icon name="UserPlus" size={16} />
+                              Зарегистрироваться
+                            </Button>
+                          )}
+                          {webinar.status === 'live' && (
+                            <Button className="flex-1 gap-2 bg-red-600 hover:bg-red-700">
+                              <Icon name="Video" size={16} />
+                              Присоединиться
+                            </Button>
+                          )}
+                          {webinar.status === 'completed' && (
+                            <Button variant="outline" className="flex-1 gap-2">
+                              <Icon name="Play" size={16} />
+                              Смотреть запись
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        )}
+
         {currentView === 'feed' && (
           <div className="animate-fade-in">
             <div className="mb-6">
@@ -493,10 +837,17 @@ const Index = () => {
                           <CardDescription>{solution.taskTitle}</CardDescription>
                         </div>
                       </div>
-                      <Badge variant="secondary" className="gap-1">
-                        <Icon name="Star" size={14} />
-                        {solution.score} баллов
-                      </Badge>
+                      {solution.score !== null ? (
+                        <Badge variant="secondary" className="gap-1 text-lg px-3 py-1">
+                          <Icon name="Star" size={16} />
+                          {solution.score} / {solution.maxScore}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="gap-1">
+                          <Icon name="Clock" size={14} />
+                          Не оценено
+                        </Badge>
+                      )}
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -511,7 +862,7 @@ const Index = () => {
                       ))}
                     </div>
 
-                    <div className="flex items-center justify-between pt-2">
+                    <div className="flex items-center justify-between pt-2 flex-wrap gap-2">
                       <span className="text-sm text-gray-500">
                         Отправлено {solution.submittedAt}
                       </span>
@@ -524,6 +875,15 @@ const Index = () => {
                         >
                           <Icon name="MessageCircle" size={16} />
                           Написать
+                        </Button>
+                        <Button 
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => openScoreDialog(solution)}
+                          className="gap-2"
+                        >
+                          <Icon name="Star" size={16} />
+                          {solution.score !== null ? 'Изменить оценку' : 'Оценить'}
                         </Button>
                         <Button size="sm" className="gap-2">
                           <Icon name="Eye" size={16} />
@@ -850,7 +1210,11 @@ const Index = () => {
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {communities.map((community) => (
-                <Card key={community.id} className="hover:shadow-lg transition-shadow animate-scale-in">
+                <Card 
+                  key={community.id} 
+                  className="hover:shadow-lg transition-shadow animate-scale-in cursor-pointer"
+                  onClick={() => openCommunityPage(community)}
+                >
                   <CardHeader>
                     <div className="flex items-center space-x-3 mb-3">
                       <div className="w-16 h-16 bg-secondary/10 rounded-xl flex items-center justify-center text-3xl">
@@ -873,49 +1237,10 @@ const Index = () => {
                     <CardDescription className="line-clamp-2">{community.description}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Tabs defaultValue="tasks" className="w-full">
-                      <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="tasks">Задания</TabsTrigger>
-                        <TabsTrigger value="rating">Рейтинг</TabsTrigger>
-                      </TabsList>
-                      <TabsContent value="tasks" className="space-y-2 mt-4">
-                        <p className="text-sm text-gray-600">Активных заданий: {community.activeTasks}</p>
-                        <div className="flex gap-2">
-                          <Button className="flex-1 gap-2">
-                            <Icon name="ChevronRight" size={16} />
-                            Задания
-                          </Button>
-                          {userRole === 'company' && (
-                            <Button variant="outline" size="icon">
-                              <Icon name="MessageSquare" size={16} />
-                            </Button>
-                          )}
-                        </div>
-                      </TabsContent>
-                      <TabsContent value="rating" className="mt-4">
-                        <div className="space-y-3">
-                          {[1, 2, 3].map((rank) => (
-                            <div key={rank} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50">
-                              <div className="w-8 h-8 bg-secondary/20 rounded-full flex items-center justify-center font-bold text-sm">
-                                {rank}
-                              </div>
-                              <div className="flex-1">
-                                <div className="text-sm font-medium">Студент {rank}</div>
-                                <div className="text-xs text-gray-500">{1000 - rank * 100} баллов</div>
-                              </div>
-                              {userRole === 'company' && (
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                  <Icon name="MessageCircle" size={14} />
-                                </Button>
-                              )}
-                            </div>
-                          ))}
-                          <Button variant="outline" className="w-full" size="sm">
-                            Полный рейтинг
-                          </Button>
-                        </div>
-                      </TabsContent>
-                    </Tabs>
+                    <Button className="w-full gap-2">
+                      Открыть сообщество
+                      <Icon name="ArrowRight" size={16} />
+                    </Button>
                   </CardContent>
                 </Card>
               ))}
@@ -953,6 +1278,56 @@ const Index = () => {
                 setCurrentView('messages');
               }}>
                 Отправить
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showScoreDialog} onOpenChange={setShowScoreDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Оценить решение</DialogTitle>
+            <DialogDescription>
+              Выставите баллы студенту {selectedSolution?.studentName}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <Label>Баллы за решение</Label>
+                <div className="text-3xl font-bold text-primary">
+                  {scoreValue[0]} / {selectedSolution?.maxScore}
+                </div>
+              </div>
+              <Slider 
+                value={scoreValue} 
+                onValueChange={setScoreValue}
+                max={selectedSolution?.maxScore || 500}
+                step={5}
+                className="mb-2"
+              />
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>0</span>
+                <span>{selectedSolution?.maxScore}</span>
+              </div>
+            </div>
+
+            <div>
+              <Label>Комментарий (необязательно)</Label>
+              <Textarea 
+                placeholder="Отличная работа! Все требования выполнены..."
+                rows={4}
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowScoreDialog(false)}>
+                Отмена
+              </Button>
+              <Button onClick={saveScore} className="gap-2">
+                <Icon name="Check" size={16} />
+                Сохранить оценку
               </Button>
             </div>
           </div>
